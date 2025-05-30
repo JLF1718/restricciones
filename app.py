@@ -5,7 +5,7 @@ from datetime import date
 from google.oauth2.service_account import Credentials
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Liberaciones v8.2", layout="centered")
+st.set_page_config(page_title="Liberaciones v8.3", layout="centered")
 st.title("🔐 Liberaciones conectadas con Google Sheets (auto-creación incluida)")
 
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -22,7 +22,7 @@ HEADERS = [
     "Fecha Recepción INPROS", "Liberó INPROS"
 ]
 
-# Diagnóstico de hojas
+# Diagnóstico
 st.subheader("🧪 Diagnóstico: hojas visibles")
 try:
     all_sheets = client.openall()
@@ -31,7 +31,7 @@ try:
 except:
     sheet_names = []
 
-# Conectar o crear hoja
+# Crear hoja si no existe
 try:
     if SHEET_NAME not in sheet_names:
         st.warning("📄 Hoja no encontrada. Creando nueva...")
@@ -57,14 +57,14 @@ except Exception as e:
 # Leer registros
 df = pd.DataFrame(sheet.get_all_records())
 
-# Cálculos
+# Cálculos corregidos
 def calcular_avance(df):
     df = df.copy()
     for col in ["Sin soldar", "Soldadas", "Rechazadas", "Liberadas"]:
         df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
     df["Total Juntas"] = df["Sin soldar"] + df["Soldadas"]
-    df["Avance Real"] = df["Rechazadas"] + df["Liberadas"]
-    df["% Avance"] = df.apply(lambda row: round((row["Avance Real"] / row["Total Juntas"]) * 100, 2)
+    df["Soldadas Check"] = df["Rechazadas"] + df["Liberadas"]
+    df["% Avance"] = df.apply(lambda row: round((row["Soldadas Check"] / row["Total Juntas"]) * 100, 2)
                               if row["Total Juntas"] > 0 else 0, axis=1)
     return df
 
