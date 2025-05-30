@@ -5,8 +5,8 @@ from datetime import date
 from google.oauth2.service_account import Credentials
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Liberaciones v8.4", layout="centered")
-st.title("🔐 Liberaciones conectadas con Google Sheets (auto-creación incluida)")
+st.set_page_config(page_title="Liberaciones v9 - Acceso Controlado", layout="centered")
+st.title("🔐 Liberaciones (solo acceso si ya existe el archivo)")
 
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 credentials = Credentials.from_service_account_info(st.secrets["GOOGLE_CREDENTIALS"], scopes=scope)
@@ -22,50 +22,24 @@ HEADERS = [
     "Fecha Recepción INPROS", "Liberó INPROS"
 ]
 
-# Diagnóstico
-st.subheader("🧪 Diagnóstico: hojas visibles")
+# Intentar conexión segura
 try:
-    all_sheets = client.openall()
-    sheet_names = [s.title for s in all_sheets]
-    st.write(sheet_names)
-except:
-    sheet_names = []
+    sheet = client.open(SHEET_NAME).worksheet(TAB_NAME)
+    st.success("✅ Hoja encontrada y conectada con éxito.")
 
-# Conectar o crear hoja
-try:
-    if SHEET_NAME not in sheet_names:
-        st.warning("📄 Hoja no encontrada. Creando nueva...")
-        sh = client.create(SHEET_NAME)
-        sh.share("streamlit-service@appliberaciones.iam.gserviceaccount.com", perm_type="user", role="writer")
-        sheet = sh.sheet1
-        sheet.update([HEADERS])
-        sheet.update_title(TAB_NAME)
-        st.success("✅ Hoja creada exitosamente.")
-    else:
-        sheet = client.open(SHEET_NAME).worksheet(TAB_NAME)
-        data = sheet.get_all_values()
-        if not data:
-            sheet.append_row(HEADERS)
-        elif data[0] != HEADERS:
-            st.warning("⚠️ Encabezados no coinciden.")
-        st.success("✅ Hoja conectada.")
-except Exception as e:
-    st.error("❌ Error al conectar con Google Sheets.")
-    st.code(str(e), language="bash")
-    st.stop()
-
-# 🔗 Mostrar enlace a la hoja de cálculo
-try:
+    # Mostrar enlace
     spreadsheet = client.open(SHEET_NAME)
     sheet_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet.id}"
     st.markdown(f"🔗 [Abrir hoja en Google Sheets]({sheet_url})")
-except Exception as e:
-    st.warning("⚠️ No se pudo generar el enlace al archivo.")
 
-# Leer registros
+except Exception as e:
+    st.error("❌ No se pudo acceder a la hoja. Verifica que ya exista y esté compartida.")
+    st.code(str(e), language="bash")
+    st.stop()
+
+# Leer datos
 df = pd.DataFrame(sheet.get_all_records())
 
-# Cálculos corregidos
 def calcular_avance(df):
     df = df.copy()
     for col in ["Sin soldar", "Soldadas", "Rechazadas", "Liberadas"]:
@@ -122,10 +96,10 @@ with st.form("formulario"):
             inspeccion, str(fecha_baysa), baysa_libero, str(fecha_inpros), inpros_libero
         ]
         sheet.append_row(fila)
-        st.success("✅ Registro agregado a Google Sheets.")
+        st.success("✅ Registro agregado correctamente.")
         st.rerun()
 
-# Visualización segura
+# Visualización
 if not df.empty and all(col in df.columns for col in ["Sin soldar", "Soldadas", "Rechazadas", "Liberadas"]):
     df = calcular_avance(df)
     df["% Cumplimiento"] = df.apply(calcular_cumplimiento, axis=1)
@@ -141,4 +115,4 @@ if not df.empty and all(col in df.columns for col in ["Sin soldar", "Soldadas", 
     ax.set_title("Resumen por Bloque")
     st.pyplot(fig)
 else:
-    st.info("ℹ️ Aún no hay datos suficientes para mostrar cálculos o gráficos.")
+    st.info("ℹ️ No hay datos suficientes para mostrar cálculos o gráficos.")
