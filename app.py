@@ -3,18 +3,14 @@ import streamlit as st
 import pandas as pd
 import gspread
 from datetime import date
-import json
-from io import StringIO
 from google.oauth2.service_account import Credentials
+import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Liberaciones v8 - Seguridad", layout="centered")
+st.set_page_config(page_title="Liberaciones v8.1", layout="centered")
 st.title("🔐 Liberaciones conectadas con Google Sheets (via st.secrets)")
 
-# Cargar credenciales desde secrets
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-credentials = Credentials.from_service_account_info(
-    st.secrets["GOOGLE_CREDENTIALS"], scopes=scope
-)
+credentials = Credentials.from_service_account_info(st.secrets["GOOGLE_CREDENTIALS"], scopes=scope)
 client = gspread.authorize(credentials)
 
 SHEET_NAME = "Liberaciones_Calidad"
@@ -27,7 +23,17 @@ HEADERS = [
     "Fecha Recepción INPROS", "Liberó INPROS"
 ]
 
-# Acceder a la hoja
+st.subheader("🧪 Diagnóstico: hojas de cálculo disponibles")
+try:
+    all_sheets = client.openall()
+    sheet_names = [s.title for s in all_sheets]
+    st.write(sheet_names)
+    if SHEET_NAME not in sheet_names:
+        st.warning(f"⚠️ No se encontró una hoja llamada exactamente: `{SHEET_NAME}`. Verifica el nombre o permisos.")
+except Exception as e:
+    st.error("❌ Error al listar hojas de cálculo.")
+    st.stop()
+
 try:
     sheet = client.open(SHEET_NAME).worksheet(TAB_NAME)
     data = sheet.get_all_values()
@@ -39,15 +45,12 @@ try:
     else:
         st.success("✅ Conexión segura establecida con Google Sheets.")
 except Exception as e:
-    import traceback
-    st.error("❌ Error de conexión con Google Sheets.")
-    st.code(traceback.format_exc(), language="python")
+    st.error("❌ Error al conectar con Google Sheets.")
+    st.code(str(e), language="bash")
     st.stop()
 
-# Leer registros
 df = pd.DataFrame(sheet.get_all_records())
 
-# Cálculos
 def calcular_avance(df):
     df = df.copy()
     for col in ["Sin soldar", "Soldadas", "Rechazadas", "Liberadas"]:
@@ -66,7 +69,6 @@ def calcular_cumplimiento(row):
     ])
     return round((score / 3) * 100, 2)
 
-# Formulario
 st.subheader("➕ Nuevo Registro")
 with st.form("formulario"):
     col1, col2, col3 = st.columns(3)
@@ -104,17 +106,14 @@ with st.form("formulario"):
         st.success("✅ Registro agregado a Google Sheets.")
         st.rerun()
 
-# Visualización
 st.subheader("📋 Tabla de registros")
 df = calcular_avance(df)
 df["% Cumplimiento"] = df.apply(calcular_cumplimiento, axis=1)
 st.dataframe(df)
 
-# Gráfico
 st.subheader("📊 Cumplimiento por bloque")
 if not df.empty:
     resumen = df.groupby("Bloque")["% Cumplimiento"].mean().round(2)
-    import matplotlib.pyplot as plt
     fig, ax = plt.subplots()
     resumen.plot(kind="bar", ax=ax)
     ax.set_ylabel("% Cumplimiento")
