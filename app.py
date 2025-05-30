@@ -15,10 +15,6 @@ scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/au
 credentials = Credentials.from_service_account_info(
     st.secrets["GOOGLE_CREDENTIALS"], scopes=scope
 )
-
-credentials = Credentials.from_service_account_info(
-    st.secrets["GOOGLE_CREDENTIALS"], scopes=scope
-)
 client = gspread.authorize(credentials)
 
 SHEET_NAME = "Liberaciones_Calidad"
@@ -43,7 +39,9 @@ try:
     else:
         st.success("✅ Conexión segura establecida con Google Sheets.")
 except Exception as e:
-    st.error(f"❌ Error de conexión: {e}")
+    import traceback
+    st.error("❌ Error de conexión con Google Sheets.")
+    st.code(traceback.format_exc(), language="python")
     st.stop()
 
 # Leer registros
