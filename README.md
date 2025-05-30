@@ -1,1 +1,1 @@
-# App v4 con cálculo de avance de soldadura
+# App v5: incluye cálculo de cumplimiento por bloque con visualización

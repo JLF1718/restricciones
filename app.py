@@ -5,8 +5,8 @@ from datetime import date
 import os
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Liberaciones Avanzadas", layout="centered")
-st.title("📋 Registro y Gestión de Liberaciones (v4)")
+st.set_page_config(page_title="Liberaciones v5", layout="centered")
+st.title("📋 Gestión de Liberaciones - Versión 5")
 
 csv_file = "estado.csv"
 
@@ -31,6 +31,14 @@ def calcular_avance(df):
         lambda row: round((row["Avance Real"] / row["Total Juntas"]) * 100, 2)
         if row["Total Juntas"] > 0 else 0, axis=1)
     return df
+
+def calcular_cumplimiento(row):
+    score = sum([
+        row["Montaje"] == "✅",
+        row["Topografía"] == "✅",
+        row["Reportes de inspección"] == "✅"
+    ])
+    return round((score / 3) * 100, 2)
 
 # === AGREGAR / EDITAR FILA ===
 st.subheader("🆕 Agregar o Editar Fila")
@@ -101,10 +109,11 @@ if not df.empty:
 else:
     st.info("Sin filas para eliminar.")
 
-# === APLICAR CÁLCULO Y MOSTRAR TABLA ===
+# === CALCULOS Y CUMPLIMIENTO ===
 df = calcular_avance(df)
+df["% Cumplimiento"] = df.apply(calcular_cumplimiento, axis=1)
 
-st.subheader("🔍 Filtrar por columnas")
+st.subheader("🔍 Filtros")
 filtro_bloque = st.multiselect("Bloque", options=df["Bloque"].dropna().unique())
 filtro_estado = st.multiselect("Montaje", options=["✅", "❌", "🅿️"])
 
@@ -116,12 +125,15 @@ if filtro_estado:
 
 st.dataframe(df_filtrado, use_container_width=True)
 
-# === RESUMEN VISUAL ===
-st.subheader("📊 Resumen visual de Montaje")
-conteo = df["Montaje"].value_counts().reindex(["✅", "❌", "🅿️"], fill_value=0)
-fig, ax = plt.subplots()
-ax.bar(conteo.index, conteo.values)
-st.pyplot(fig)
+# === GRAFICO CUMPLIMIENTO POR BLOQUE ===
+st.subheader("📊 Cumplimiento por Bloque")
+if not df.empty:
+    resumen = df.groupby("Bloque")["% Cumplimiento"].mean().round(2).sort_index()
+    fig, ax = plt.subplots()
+    resumen.plot(kind="bar", ax=ax)
+    ax.set_ylabel("% Cumplimiento")
+    ax.set_title("Cumplimiento por Bloque")
+    st.pyplot(fig)
 
 # === DESCARGA CSV ===
 csv = df.to_csv(index=False).encode("utf-8")
