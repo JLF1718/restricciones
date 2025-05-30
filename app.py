@@ -36,6 +36,9 @@ except Exception as e:
 
 try:
     sheet = client.open(SHEET_NAME).worksheet(TAB_NAME)
+    SHEET_ID = "AQUÍ_TU_ID"
+    sheet = client.open_by_key(SHEET_ID).worksheet(TAB_NAME)
+    1VfyL45r7srvHe4S2NuuC3ZuZKiR4e6mO-AY3TIaFwbE
     data = sheet.get_all_values()
     if not data:
         sheet.append_row(HEADERS)
