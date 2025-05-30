@@ -1,1 +1,1 @@
-# App v6: integrada con Google Sheets para persistencia
+# App v7: verificación de encabezados y conexión inicial mejorada
