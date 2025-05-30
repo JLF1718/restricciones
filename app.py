@@ -66,7 +66,7 @@ df[["Tarea", "Completado", "Marca de Tiempo"]].to_csv(archivo_estado, index=Fals
 # === RESUMEN Y GRÁFICO ===
 completadas = sum(st.session_state.estados)
 pendientes = len(tareas) - completadas
-porcentaje = round(completadas / len(tareas) * 100, 2)
+porcentaje = round(completadas / len(tareas) * 100, 2) if len(tareas) > 0 else 0
 
 st.subheader("📊 Resumen")
 st.write(f"**Total de tareas:** {len(tareas)}")
