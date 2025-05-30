@@ -81,7 +81,21 @@ with st.form("formulario"):
         df.to_csv(csv_file, index=False)
         st.success("✅ Fila agregada correctamente.")
         st.rerun()
+st.subheader("🗑️ Eliminar fila por índice")
 
+if not df.empty:
+    st.write("Tabla actual con índices:")
+    st.dataframe(df.reset_index())
+
+    index_to_delete = st.number_input("Ingrese el índice de la fila a eliminar", min_value=0, max_value=len(df)-1, step=1)
+
+    if st.button("Eliminar fila"):
+        df = df.drop(index=index_to_delete).reset_index(drop=True)
+        df.to_csv(csv_file, index=False)
+        st.success(f"✅ Fila {index_to_delete} eliminada correctamente.")
+        st.rerun()
+else:
+    st.info("No hay datos para eliminar.")
 
 # Mostrar tabla actual
 st.subheader("📊 Tabla actual")
