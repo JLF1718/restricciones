@@ -50,7 +50,7 @@ try:
             st.warning("⚠️ Encabezados no coinciden.")
         st.success("✅ Hoja conectada.")
 except Exception as e:
-    st.error("❌ Error de conexión con Google Sheets.")
+    st.error("❌ Error al conectar con Google Sheets.")
     st.code(str(e), language="bash")
     st.stop()
 
@@ -114,18 +114,20 @@ with st.form("formulario"):
         st.success("✅ Registro agregado a Google Sheets.")
         st.rerun()
 
-# Visualización
-st.subheader("📋 Tabla de registros")
-df = calcular_avance(df)
-df["% Cumplimiento"] = df.apply(calcular_cumplimiento, axis=1)
-st.dataframe(df)
+# Visualización segura
+if not df.empty and all(col in df.columns for col in ["Sin soldar", "Soldadas", "Rechazadas", "Liberadas"]):
+    df = calcular_avance(df)
+    df["% Cumplimiento"] = df.apply(calcular_cumplimiento, axis=1)
 
-# Gráfico
-st.subheader("📊 Cumplimiento por bloque")
-if not df.empty:
+    st.subheader("📋 Tabla de registros")
+    st.dataframe(df)
+
+    st.subheader("📊 Cumplimiento por bloque")
     resumen = df.groupby("Bloque")["% Cumplimiento"].mean().round(2)
     fig, ax = plt.subplots()
     resumen.plot(kind="bar", ax=ax)
     ax.set_ylabel("% Cumplimiento")
     ax.set_title("Resumen por Bloque")
     st.pyplot(fig)
+else:
+    st.info("ℹ️ Aún no hay datos suficientes para mostrar cálculos o gráficos.")
