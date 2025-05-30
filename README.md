@@ -1,1 +1,1 @@
-# App v5: incluye cálculo de cumplimiento por bloque con visualización
+# App v6: integrada con Google Sheets para persistencia
