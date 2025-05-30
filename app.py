@@ -3,18 +3,19 @@ import streamlit as st
 import pandas as pd
 import gspread
 from datetime import date
+import json
+from io import StringIO
 from google.oauth2.service_account import Credentials
 
-# Configuración
-st.set_page_config(page_title="Liberaciones v7 - Google Sheets Mejorado", layout="centered")
-st.title("📡 Conexión mejorada a Google Sheets - Versión 7")
+st.set_page_config(page_title="Liberaciones v8 - Seguridad", layout="centered")
+st.title("🔐 Liberaciones conectadas con Google Sheets (via st.secrets)")
 
-# Autenticación con Google
+# Cargar credenciales desde secrets
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-credentials = Credentials.from_service_account_file("credentials.json", scopes=scope)
+info = json.load(StringIO(st.secrets["GOOGLE_CREDENTIALS"]))
+credentials = Credentials.from_service_account_info(info, scopes=scope)
 client = gspread.authorize(credentials)
 
-# Acceso al archivo y hoja
 SHEET_NAME = "Liberaciones_Calidad"
 TAB_NAME = "estado"
 HEADERS = [
@@ -25,32 +26,29 @@ HEADERS = [
     "Fecha Recepción INPROS", "Liberó INPROS"
 ]
 
-# Intentar conectar y verificar encabezados
+# Acceder a la hoja
 try:
     sheet = client.open(SHEET_NAME).worksheet(TAB_NAME)
     data = sheet.get_all_values()
     if not data:
         sheet.append_row(HEADERS)
-        st.success("✅ Encabezados creados automáticamente en la hoja.")
+        st.success("✅ Encabezados creados en la hoja.")
     elif data[0] != HEADERS:
-        st.warning("⚠️ Los encabezados en la hoja no coinciden con los esperados. Verifícalos manualmente.")
+        st.warning("⚠️ Los encabezados no coinciden. Revisa manualmente.")
     else:
-        st.success("✅ Conectado a Google Sheets correctamente.")
+        st.success("✅ Conexión segura establecida con Google Sheets.")
 except Exception as e:
-    st.error(f"Error al conectar a Google Sheets: {e}")
+    st.error(f"❌ Error de conexión: {e}")
     st.stop()
 
-# Cargar datos
-data = sheet.get_all_records()
-df = pd.DataFrame(data)
+# Leer registros
+df = pd.DataFrame(sheet.get_all_records())
 
-# Cálculos auxiliares
+# Cálculos
 def calcular_avance(df):
     df = df.copy()
-    df["Sin soldar"] = pd.to_numeric(df["Sin soldar"], errors="coerce").fillna(0)
-    df["Soldadas"] = pd.to_numeric(df["Soldadas"], errors="coerce").fillna(0)
-    df["Rechazadas"] = pd.to_numeric(df["Rechazadas"], errors="coerce").fillna(0)
-    df["Liberadas"] = pd.to_numeric(df["Liberadas"], errors="coerce").fillna(0)
+    for col in ["Sin soldar", "Soldadas", "Rechazadas", "Liberadas"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
     df["Total Juntas"] = df["Sin soldar"] + df["Soldadas"]
     df["Avance Real"] = df["Rechazadas"] + df["Liberadas"]
     df["% Avance"] = df.apply(lambda row: round((row["Avance Real"] / row["Total Juntas"]) * 100, 2)
@@ -66,7 +64,7 @@ def calcular_cumplimiento(row):
     return round((score / 3) * 100, 2)
 
 # Formulario
-st.subheader("📝 Agregar registro")
+st.subheader("➕ Nuevo Registro")
 with st.form("formulario"):
     col1, col2, col3 = st.columns(3)
     bloque = col1.text_input("Bloque")
@@ -91,8 +89,8 @@ with st.form("formulario"):
     fecha_baysa = col8.date_input("Fecha Entrega BAYSA", value=date.today())
     fecha_inpros = col9.date_input("Fecha Recepción INPROS", value=date.today())
 
-    enviar = st.form_submit_button("Guardar en hoja")
-    if enviar:
+    enviado = st.form_submit_button("Guardar en Google Sheets")
+    if enviado:
         fila = [
             bloque, eje, nivel,
             montaje, topografia,
@@ -100,16 +98,16 @@ with st.form("formulario"):
             inspeccion, str(fecha_baysa), baysa_libero, str(fecha_inpros), inpros_libero
         ]
         sheet.append_row(fila)
-        st.success("✅ Fila guardada exitosamente.")
+        st.success("✅ Registro agregado a Google Sheets.")
         st.rerun()
 
 # Visualización
-st.subheader("📋 Registros actuales")
+st.subheader("📋 Tabla de registros")
 df = calcular_avance(df)
 df["% Cumplimiento"] = df.apply(calcular_cumplimiento, axis=1)
 st.dataframe(df)
 
-# Gráfico por bloque
+# Gráfico
 st.subheader("📊 Cumplimiento por bloque")
 if not df.empty:
     resumen = df.groupby("Bloque")["% Cumplimiento"].mean().round(2)
@@ -117,5 +115,5 @@ if not df.empty:
     fig, ax = plt.subplots()
     resumen.plot(kind="bar", ax=ax)
     ax.set_ylabel("% Cumplimiento")
-    ax.set_title("Cumplimiento por Bloque")
+    ax.set_title("Resumen por Bloque")
     st.pyplot(fig)

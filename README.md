@@ -1,1 +1,1 @@
-# App v7: verificación de encabezados y conexión inicial mejorada
+# App v8: segura con st.secrets y Google Sheets
