@@ -44,7 +44,7 @@ def calcular_avance(df):
     df = df.copy()
     for col in ["Sin soldar", "Soldadas", "Rechazadas", "Liberadas"]:
         df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-    df["Total Juntas"] = df["Sin soldar"] + df["Soldadas"] + df["Rechazadas"] + df["Liberadas"]
+    df["Total Juntas"] = df["Sin soldar"] + df["Soldadas"]
     df["Avance Real"] = df["Rechazadas"] + df["Liberadas"]
     df["% Avance"] = df.apply(
         lambda row: round((row["Avance Real"] / row["Total Juntas"]) * 100, 2)
