@@ -1,125 +1,91 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
-import matplotlib.pyplot as plt
+from datetime import date
 import os
 
-st.set_page_config(page_title="Checklist de Calidad", layout="centered")
-st.subheader("➕ Agregar nueva tarea")
+st.set_page_config(page_title="Formulario de Liberación", layout="centered")
+st.title("📋 Formulario de Liberación de Elementos")
 
-with st.form("agregar_tarea"):
-    nueva_tarea = st.text_input("Descripción de la nueva tarea")
-    submitted = st.form_submit_button("Agregar")
+csv_file = "estado.csv"
 
-    if submitted and nueva_tarea.strip() != "":
-        # Leer archivo existente
-        df = pd.read_csv("estado.csv") if os.path.exists("estado.csv") else pd.DataFrame(columns=["Tarea", "Completado", "Marca de Tiempo"])
-        
-        # Verificar que no exista ya
-        if nueva_tarea in df["Tarea"].values:
-            st.warning("⚠️ Esa tarea ya existe.")
-        else:
-            nueva_fila = pd.DataFrame([{
-                "Tarea": nueva_tarea.strip(),
-                "Completado": False,
-                "Marca de Tiempo": ""
-            }])
-            df = pd.concat([df, nueva_fila], ignore_index=True)
-            df.to_csv("estado.csv", index=False)
-            st.success("✅ Tarea agregada correctamente.")
-            st.experimental_rerun()  # Recargar app
-
-# === TAREAS PRECARGADAS ===
-tareas = [
-    '1.1 – Planos de montaje',
-    '1.2 – Planos de taller',
-    '2.1 - Matriz de Soldadores',
-    '2.2 - Verificación de Parámetros de Soldadura',
-    '3.1 - Reporte de Montaje',
-    '3.2 - Reportes de PND’s (VT, UT, PT)',
-    '3.3 - Planos de Mapeo de Soldadura',
-    '3.4 - Reporte de Apriete Ajustado',
-    '3.5 - Reporte de Liberación Topográfica',
-    '4.1 - Certificados de Soldadura',
-    '4.2 - Certificados de Tornillería',
-    '4.3 - Certificados de Gases',
-    '5 - Reporte de Producto Terminado',
-    '6 - Matriz de RFI',
-    '7 - Planos As-Built'
-]
-
-# === PERSISTENCIA ===
-archivo_estado = "estado.csv"
-if os.path.exists(archivo_estado):
-    df_estado = pd.read_csv(archivo_estado)
-    tareas = df_estado["Tarea"].tolist()
-    estados_cargados = df_estado["Completado"].tolist()
-    fechas_cargadas = df_estado["Marca de Tiempo"].fillna("").tolist()
+# Leer estado previo si existe
+if os.path.exists(csv_file):
+    df = pd.read_csv(csv_file)
 else:
-    estados_cargados = [False] * len(tareas)
-    fechas_cargadas = [""] * len(tareas)
+    df = pd.DataFrame(columns=[
+        "Bloque", "Eje", "Nivel",
+        "Montaje", "Topografía",
+        "Sin soldar", "Soldadas", "Rechazadas", "Liberadas",
+        "Reportes de inspección", "Fecha Entrega BAYSA", "Liberó BAYSA",
+        "Fecha Recepción INPROS", "Liberó INPROS"
+    ])
 
-if "estados" not in st.session_state:
-    st.session_state.estados = estados_cargados
-    st.session_state.fechas = fechas_cargadas
-
-# === INTERFAZ ===
-st.title("✅ Checklist de Calidad")
-st.markdown("Marca las tareas completadas para registrar su progreso y ver el resumen visual.")
-
-st.subheader("Lista de Tareas")
-for i, tarea in enumerate(tareas):
-    col1, col2 = st.columns([0.7, 0.3])
+# Formulario
+with st.form("formulario"):
+    st.subheader("📝 Datos del elemento")
+    col1, col2, col3 = st.columns(3)
     with col1:
-        st.session_state.estados[i] = st.checkbox(tarea, value=st.session_state.estados[i], key=f"check_{i}")
-    if st.session_state.estados[i] and st.session_state.fechas[i] == "":
-        st.session_state.fechas[i] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        bloque = st.text_input("Bloque")
     with col2:
-        st.caption(f"🕒 {st.session_state.fechas[i]}" if st.session_state.fechas[i] else "")
+        eje = st.text_input("Eje")
+    with col3:
+        nivel = st.text_input("Nivel")
 
-df = pd.DataFrame({
-    "Tarea": tareas,
-    "Completado": st.session_state.estados,
-    "Marca de Tiempo": st.session_state.fechas
-})
-df["Estado"] = df["Completado"].apply(lambda x: "✔ Completado" if x else "✘ Pendiente")
+    st.subheader("📌 Estado general")
+    col4, col5 = st.columns(2)
+    with col4:
+        montaje = st.selectbox("Montaje", ["✅", "❌"])
+        topografia = st.selectbox("Topografía", ["✅", "❌"])
+        baysa_libero = st.selectbox("Liberó BAYSA", ["✅", "❌"])
+    with col5:
+        inspeccion = st.selectbox("Reportes de inspección", ["✅", "❌"])
+        inpros_libero = st.selectbox("Liberó INPROS", ["✅", "❌"])
 
-# === GUARDAR CSV LOCAL ===
-df[["Tarea", "Completado", "Marca de Tiempo"]].to_csv(archivo_estado, index=False)
+    st.subheader("🔢 Estado de soldadura")
+    col6, col7 = st.columns(2)
+    with col6:
+        sin_soldar = st.number_input("Sin soldar", min_value=0)
+        soldadas = st.number_input("Soldadas", min_value=0)
+    with col7:
+        rechazadas = st.number_input("Rechazadas", min_value=0)
+        liberadas = st.number_input("Liberadas", min_value=0)
 
-# === RESUMEN Y GRÁFICO ===
-completadas = sum(st.session_state.estados)
-total_tareas = len(st.session_state.estados)
-pendientes = total_tareas - completadas
+    st.subheader("📅 Fechas")
+    col8, col9 = st.columns(2)
+    with col8:
+        fecha_baysa = st.date_input("Fecha Entrega BAYSA", value=date.today())
+    with col9:
+        fecha_inpros = st.date_input("Fecha Recepción INPROS", value=date.today())
 
-# Evitar división por cero
-if total_tareas > 0:
-    porcentaje = round(completadas / total_tareas * 100, 2)
-else:
-    porcentaje = 0
+    # Botón enviar
+    enviado = st.form_submit_button("Agregar fila")
 
-# Mostrar resumen
-st.subheader("📊 Resumen")
-st.write(f"**Total de tareas:** {total_tareas}")
-st.write(f"**Completadas:** {completadas}")
-st.write(f"**Pendientes:** {pendientes}")
-st.write(f"**Porcentaje completado:** {porcentaje}%")
+    if enviado:
+        nueva_fila = {
+            "Bloque": bloque,
+            "Eje": eje,
+            "Nivel": nivel,
+            "Montaje": montaje,
+            "Topografía": topografia,
+            "Sin soldar": sin_soldar,
+            "Soldadas": soldadas,
+            "Rechazadas": rechazadas,
+            "Liberadas": liberadas,
+            "Reportes de inspección": inspeccion,
+            "Fecha Entrega BAYSA": fecha_baysa,
+            "Liberó BAYSA": baysa_libero,
+            "Fecha Recepción INPROS": fecha_inpros,
+            "Liberó INPROS": inpros_libero
+        }
+        df = pd.concat([df, pd.DataFrame([nueva_fila])], ignore_index=True)
+        df.to_csv(csv_file, index=False)
+        st.success("✅ Fila agregada correctamente.")
+        st.experimental_rerun()
 
-# Mostrar gráfico solo si hay tareas
-if total_tareas > 0:
-    fig, ax = plt.subplots()
-    ax.pie([completadas, pendientes], labels=["Completadas", "Pendientes"],
-           autopct='%1.1f%%', startangle=140)
-    ax.axis("equal")
-    st.pyplot(fig)
-else:
-    st.info("No hay tareas cargadas. Asegúrate de que el archivo `estado.csv` tenga contenido válido.")
+# Mostrar tabla actual
+st.subheader("📊 Tabla actual")
+st.dataframe(df)
 
-# === DESCARGA CSV ===
-csv = df.to_csv(index=False).encode('utf-8')
-st.download_button(
-    label="📥 Descargar tareas como CSV",
-    data=csv,
-    file_name='tareas_completadas.csv',
-    mime='text/csv'
-)
+# Descargar
+csv = df.to_csv(index=False).encode("utf-8")
+st.download_button("📥 Descargar CSV", data=csv, file_name="estado.csv", mime="text/csv")

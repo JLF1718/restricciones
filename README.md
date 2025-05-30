@@ -1,24 +1,15 @@
-# ✅ Checklist de Calidad (Streamlit App)
+# Formulario de Liberación
 
-App web interactiva para gestionar una lista de tareas técnicas con marcas de tiempo, persistencia y exportación.
+Aplicación en Streamlit para capturar información técnica de liberaciones de estructuras. Los datos se almacenan en un archivo `estado.csv`.
 
-## 🔧 Cómo ejecutar
+## Cómo usar
 
-### Opción 1: Streamlit Cloud
-1. Sube este repositorio a tu GitHub.
-2. Entra a https://streamlit.io/cloud
-3. Conéctalo a tu repositorio y lanza la app.
+1. Completa el formulario en la web.
+2. Se agregan filas al archivo CSV automáticamente.
+3. Puedes exportar todo en cualquier momento.
 
-### Opción 2: Local
-```bash
-pip install -r requirements.txt
-streamlit run app.py
-```
+## Despliegue
 
-## ✨ Funcionalidades
-- Lista de tareas técnicas predefinidas
-- Marcar completado con checkbox
-- Marca de tiempo automática
-- Exportación CSV
-- Persistencia entre sesiones con `estado.csv`
-- Resumen y gráfico circular
+- Sube este proyecto a GitHub
+- Usa Streamlit Cloud: https://streamlit.io/cloud
+
