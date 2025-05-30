@@ -4,6 +4,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import os
 
+st.set_page_config(page_title="Checklist de Calidad", layout="centered")
 st.subheader("➕ Agregar nueva tarea")
 
 with st.form("agregar_tarea"):
@@ -63,7 +64,6 @@ if "estados" not in st.session_state:
     st.session_state.fechas = fechas_cargadas
 
 # === INTERFAZ ===
-st.set_page_config(page_title="Checklist de Calidad", layout="centered")
 st.title("✅ Checklist de Calidad")
 st.markdown("Marca las tareas completadas para registrar su progreso y ver el resumen visual.")
 
