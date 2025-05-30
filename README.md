@@ -1,1 +1,1 @@
-# App avanzada de liberaciones con edición, filtros y visualización
+# App v4 con cálculo de avance de soldadura

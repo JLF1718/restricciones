@@ -6,7 +6,7 @@ import os
 import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Liberaciones Avanzadas", layout="centered")
-st.title("📋 Registro y Gestión de Liberaciones")
+st.title("📋 Registro y Gestión de Liberaciones (v4)")
 
 csv_file = "estado.csv"
 
@@ -21,6 +21,16 @@ else:
         "Reportes de inspección", "Fecha Entrega BAYSA", "Liberó BAYSA",
         "Fecha Recepción INPROS", "Liberó INPROS"
     ])
+
+# === FUNCIONES ===
+def calcular_avance(df):
+    df = df.copy()
+    df["Total Juntas"] = df["Sin soldar"] + df["Soldadas"]
+    df["Avance Real"] = df["Rechazadas"] + df["Liberadas"]
+    df["% Avance"] = df.apply(
+        lambda row: round((row["Avance Real"] / row["Total Juntas"]) * 100, 2)
+        if row["Total Juntas"] > 0 else 0, axis=1)
+    return df
 
 # === AGREGAR / EDITAR FILA ===
 st.subheader("🆕 Agregar o Editar Fila")
@@ -91,7 +101,9 @@ if not df.empty:
 else:
     st.info("Sin filas para eliminar.")
 
-# === FILTROS ===
+# === APLICAR CÁLCULO Y MOSTRAR TABLA ===
+df = calcular_avance(df)
+
 st.subheader("🔍 Filtrar por columnas")
 filtro_bloque = st.multiselect("Bloque", options=df["Bloque"].dropna().unique())
 filtro_estado = st.multiselect("Montaje", options=["✅", "❌", "🅿️"])
