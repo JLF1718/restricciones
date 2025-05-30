@@ -80,7 +80,8 @@ with st.form("formulario"):
         df = pd.concat([df, pd.DataFrame([nueva_fila])], ignore_index=True)
         df.to_csv(csv_file, index=False)
         st.success("✅ Fila agregada correctamente.")
-        st.experimental_rerun()
+        st.rerun()
+
 
 # Mostrar tabla actual
 st.subheader("📊 Tabla actual")
