@@ -14,6 +14,9 @@ st.title("🔐 Liberaciones conectadas con Google Sheets (via st.secrets)")
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 info = json.load(StringIO(st.secrets["GOOGLE_CREDENTIALS"]))
 credentials = Credentials.from_service_account_info(info, scopes=scope)
+credentials = Credentials.from_service_account_info(
+    st.secrets["GOOGLE_CREDENTIALS"], scopes=scope
+)
 client = gspread.authorize(credentials)
 
 SHEET_NAME = "Liberaciones_Calidad"
