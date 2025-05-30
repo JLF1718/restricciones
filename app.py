@@ -65,23 +65,31 @@ df[["Tarea", "Completado", "Marca de Tiempo"]].to_csv(archivo_estado, index=Fals
 
 # === RESUMEN Y GRÁFICO ===
 completadas = sum(st.session_state.estados)
-pendientes = len(tareas) - completadas
-porcentaje = round(completadas / len(tareas) * 100, 2) if len(tareas) > 0 else 0
+total_tareas = len(st.session_state.estados)
+pendientes = total_tareas - completadas
 
+# Evitar división por cero
+if total_tareas > 0:
+    porcentaje = round(completadas / total_tareas * 100, 2)
+else:
+    porcentaje = 0
+
+# Mostrar resumen
 st.subheader("📊 Resumen")
-st.write(f"**Total de tareas:** {len(tareas)}")
+st.write(f"**Total de tareas:** {total_tareas}")
 st.write(f"**Completadas:** {completadas}")
 st.write(f"**Pendientes:** {pendientes}")
 st.write(f"**Porcentaje completado:** {porcentaje}%")
 
-fig, ax = plt.subplots()
-ax.pie([completadas, pendientes], labels=["Completadas", "Pendientes"],
-       autopct='%1.1f%%', startangle=140)
-ax.axis("equal")
-st.pyplot(fig)
-
-st.subheader("📋 Estado de las Tareas")
-st.dataframe(df[['Tarea', 'Estado', 'Marca de Tiempo']], use_container_width=True)
+# Mostrar gráfico solo si hay tareas
+if total_tareas > 0:
+    fig, ax = plt.subplots()
+    ax.pie([completadas, pendientes], labels=["Completadas", "Pendientes"],
+           autopct='%1.1f%%', startangle=140)
+    ax.axis("equal")
+    st.pyplot(fig)
+else:
+    st.info("No hay tareas cargadas. Asegúrate de que el archivo `estado.csv` tenga contenido válido.")
 
 # === DESCARGA CSV ===
 csv = df.to_csv(index=False).encode('utf-8')
