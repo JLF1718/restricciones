@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import gspread
@@ -6,8 +5,8 @@ from datetime import date
 from google.oauth2.service_account import Credentials
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Liberaciones v8.1", layout="centered")
-st.title("🔐 Liberaciones conectadas con Google Sheets (via st.secrets)")
+st.set_page_config(page_title="Liberaciones v8.2", layout="centered")
+st.title("🔐 Liberaciones conectadas con Google Sheets (auto-creación incluida)")
 
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 credentials = Credentials.from_service_account_info(st.secrets["GOOGLE_CREDENTIALS"], scopes=scope)
@@ -23,37 +22,42 @@ HEADERS = [
     "Fecha Recepción INPROS", "Liberó INPROS"
 ]
 
-st.subheader("🧪 Diagnóstico: hojas de cálculo disponibles")
+# Diagnóstico de hojas
+st.subheader("🧪 Diagnóstico: hojas visibles")
 try:
     all_sheets = client.openall()
     sheet_names = [s.title for s in all_sheets]
     st.write(sheet_names)
-    if SHEET_NAME not in sheet_names:
-        st.warning(f"⚠️ No se encontró una hoja llamada exactamente: `{SHEET_NAME}`. Verifica el nombre o permisos.")
-except Exception as e:
-    st.error("❌ Error al listar hojas de cálculo.")
-    st.stop()
+except:
+    sheet_names = []
 
+# Conectar o crear hoja
 try:
-    sheet = client.open(SHEET_NAME).worksheet(TAB_NAME)
-    SHEET_ID = "AQUÍ_TU_ID"
-    sheet = client.open_by_key(SHEET_ID).worksheet(TAB_NAME)
-    1VfyL45r7srvHe4S2NuuC3ZuZKiR4e6mO-AY3TIaFwbE
-    data = sheet.get_all_values()
-    if not data:
-        sheet.append_row(HEADERS)
-        st.success("✅ Encabezados creados en la hoja.")
-    elif data[0] != HEADERS:
-        st.warning("⚠️ Los encabezados no coinciden. Revisa manualmente.")
+    if SHEET_NAME not in sheet_names:
+        st.warning("📄 Hoja no encontrada. Creando nueva...")
+        sh = client.create(SHEET_NAME)
+        sh.share("streamlit-service@appliberaciones.iam.gserviceaccount.com", perm_type="user", role="writer")
+        sheet = sh.sheet1
+        sheet.update([HEADERS])
+        sheet.update_title(TAB_NAME)
+        st.success("✅ Hoja creada exitosamente.")
     else:
-        st.success("✅ Conexión segura establecida con Google Sheets.")
+        sheet = client.open(SHEET_NAME).worksheet(TAB_NAME)
+        data = sheet.get_all_values()
+        if not data:
+            sheet.append_row(HEADERS)
+        elif data[0] != HEADERS:
+            st.warning("⚠️ Encabezados no coinciden.")
+        st.success("✅ Hoja conectada.")
 except Exception as e:
-    st.error("❌ Error al conectar con Google Sheets.")
+    st.error("❌ Error de conexión con Google Sheets.")
     st.code(str(e), language="bash")
     st.stop()
 
+# Leer registros
 df = pd.DataFrame(sheet.get_all_records())
 
+# Cálculos
 def calcular_avance(df):
     df = df.copy()
     for col in ["Sin soldar", "Soldadas", "Rechazadas", "Liberadas"]:
@@ -72,6 +76,7 @@ def calcular_cumplimiento(row):
     ])
     return round((score / 3) * 100, 2)
 
+# Formulario
 st.subheader("➕ Nuevo Registro")
 with st.form("formulario"):
     col1, col2, col3 = st.columns(3)
@@ -109,11 +114,13 @@ with st.form("formulario"):
         st.success("✅ Registro agregado a Google Sheets.")
         st.rerun()
 
+# Visualización
 st.subheader("📋 Tabla de registros")
 df = calcular_avance(df)
 df["% Cumplimiento"] = df.apply(calcular_cumplimiento, axis=1)
 st.dataframe(df)
 
+# Gráfico
 st.subheader("📊 Cumplimiento por bloque")
 if not df.empty:
     resumen = df.groupby("Bloque")["% Cumplimiento"].mean().round(2)
