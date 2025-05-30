@@ -4,6 +4,30 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import os
 
+st.subheader("➕ Agregar nueva tarea")
+
+with st.form("agregar_tarea"):
+    nueva_tarea = st.text_input("Descripción de la nueva tarea")
+    submitted = st.form_submit_button("Agregar")
+
+    if submitted and nueva_tarea.strip() != "":
+        # Leer archivo existente
+        df = pd.read_csv("estado.csv") if os.path.exists("estado.csv") else pd.DataFrame(columns=["Tarea", "Completado", "Marca de Tiempo"])
+        
+        # Verificar que no exista ya
+        if nueva_tarea in df["Tarea"].values:
+            st.warning("⚠️ Esa tarea ya existe.")
+        else:
+            nueva_fila = pd.DataFrame([{
+                "Tarea": nueva_tarea.strip(),
+                "Completado": False,
+                "Marca de Tiempo": ""
+            }])
+            df = pd.concat([df, nueva_fila], ignore_index=True)
+            df.to_csv("estado.csv", index=False)
+            st.success("✅ Tarea agregada correctamente.")
+            st.experimental_rerun()  # Recargar app
+
 # === TAREAS PRECARGADAS ===
 tareas = [
     '1.1 – Planos de montaje',
