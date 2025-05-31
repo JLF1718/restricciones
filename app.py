@@ -6,8 +6,8 @@ from google.oauth2.service_account import Credentials
 import matplotlib.pyplot as plt
 import numpy as np
 
-st.set_page_config(page_title="Liberaciones v13.1", layout="wide")
-st.title("🔐 Liberaciones - Gráfico Azul + Sin inspección")
+st.set_page_config(page_title="Liberaciones v13.2", layout="wide")
+st.title("🔐 Liberaciones - Campo 'Sin inspección' activo")
 
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 credentials = Credentials.from_service_account_info(st.secrets["GOOGLE_CREDENTIALS"], scopes=scope)
@@ -29,6 +29,13 @@ try:
     spreadsheet = client.open(SHEET_NAME)
     sheet_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet.id}"
     st.markdown(f"🔗 [Abrir hoja en Google Sheets]({sheet_url})")
+
+    # Verificar encabezados
+    encabezados_actuales = sheet.row_values(1)
+    if encabezados_actuales != HEADERS:
+        sheet.delete_rows(1)
+        sheet.insert_row(HEADERS, 1)
+        st.info("ℹ️ Encabezados actualizados automáticamente.")
 except Exception as e:
     st.error("❌ No se pudo acceder a la hoja.")
     st.code(str(e), language="bash")
@@ -36,27 +43,7 @@ except Exception as e:
 
 df = pd.DataFrame(sheet.get_all_records())
 
-def calcular_avance(df):
-    df = df.copy()
-    for col in ["Sin soldar", "Soldadas", "Sin inspección", "Rechazadas", "Liberadas"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-    df["Total Juntas"] = df["Sin soldar"] + df["Soldadas"]
-    df["Avance Real"] = df["Rechazadas"] + df["Liberadas"]
-    df["% Avance"] = df.apply(
-        lambda row: round((row["Avance Real"] / row["Total Juntas"]) * 100, 2)
-        if row["Total Juntas"] > 0 else 0, axis=1
-    )
-    return df
-
-def calcular_cumplimiento(row):
-    score = sum([
-        row.get("Montaje") == "✅",
-        row.get("Topografía") == "✅",
-        row.get("Reportes de inspección") == "✅"
-    ])
-    return round((score / 3) * 100, 2)
-
-# Formulario
+# ------------------ FORMULARIO --------------------
 st.subheader("➕ Nuevo Registro")
 with st.form("formulario"):
     col1, col2, col3 = st.columns(3)
@@ -92,9 +79,33 @@ with st.form("formulario"):
             inspeccion, str(fecha_baysa), baysa_libero, str(fecha_inpros), inpros_libero,
             "", "", "", ""
         ]
-        sheet.append_row(fila)
-        st.success("✅ Registro agregado.")
-        st.rerun()
+        if len(fila) == len(HEADERS):
+            sheet.append_row(fila)
+            st.success("✅ Registro agregado.")
+            st.rerun()
+        else:
+            st.error("❌ La fila no coincide con la cantidad de columnas.")
+
+# ------------------ CÁLCULOS Y VISUAL --------------------
+def calcular_avance(df):
+    df = df.copy()
+    for col in ["Sin soldar", "Soldadas", "Sin inspección", "Rechazadas", "Liberadas"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+    df["Total Juntas"] = df["Sin soldar"] + df["Soldadas"]
+    df["Avance Real"] = df["Rechazadas"] + df["Liberadas"]
+    df["% Avance"] = df.apply(
+        lambda row: round((row["Avance Real"] / row["Total Juntas"]) * 100, 2)
+        if row["Total Juntas"] > 0 else 0, axis=1
+    )
+    return df
+
+def calcular_cumplimiento(row):
+    score = sum([
+        row.get("Montaje") == "✅",
+        row.get("Topografía") == "✅",
+        row.get("Reportes de inspección") == "✅"
+    ])
+    return round((score / 3) * 100, 2)
 
 if not df.empty:
     df = calcular_avance(df)
