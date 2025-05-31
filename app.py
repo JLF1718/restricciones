@@ -6,8 +6,8 @@ from google.oauth2.service_account import Credentials
 import matplotlib.pyplot as plt
 import numpy as np
 
-st.set_page_config(page_title="Liberaciones v13.2", layout="wide")
-st.title("🔐 Liberaciones - Campo 'Sin inspección' activo")
+st.set_page_config(page_title="Liberaciones v13.3", layout="wide")
+st.title("🔐 Liberaciones - 'Sin inspección' visible + Validaciones")
 
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 credentials = Credentials.from_service_account_info(st.secrets["GOOGLE_CREDENTIALS"], scopes=scope)
@@ -30,7 +30,6 @@ try:
     sheet_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet.id}"
     st.markdown(f"🔗 [Abrir hoja en Google Sheets]({sheet_url})")
 
-    # Verificar encabezados
     encabezados_actuales = sheet.row_values(1)
     if encabezados_actuales != HEADERS:
         sheet.delete_rows(1)
@@ -59,32 +58,37 @@ with st.form("formulario"):
     inspeccion = col5.selectbox("Reportes de inspección", opciones_estado)
     inpros_libero = col5.selectbox("Liberó INPROS", opciones_estado)
 
-    col6, col7 = st.columns(2)
+    col6, col7, col8 = st.columns(3)
     sin_soldar = col6.number_input("Sin soldar", min_value=0)
     soldadas = col6.number_input("Soldadas", min_value=0)
     sin_inspeccion = col7.number_input("Sin inspección", min_value=0)
     rechazadas = col7.number_input("Rechazadas", min_value=0)
-    liberadas = st.number_input("Liberadas", min_value=0)
+    liberadas = col8.number_input("Liberadas", min_value=0)
 
-    col8, col9 = st.columns(2)
-    fecha_baysa = col8.date_input("Fecha Entrega BAYSA", value=date.today())
-    fecha_inpros = col9.date_input("Fecha Recepción INPROS", value=date.today())
+    col9, col10 = st.columns(2)
+    fecha_baysa = col9.date_input("Fecha Entrega BAYSA", value=date.today())
+    fecha_inpros = col10.date_input("Fecha Recepción INPROS", value=date.today())
 
     enviado = st.form_submit_button("Guardar en Google Sheets")
     if enviado:
-        fila = [
-            bloque, eje, nivel,
-            montaje, topografia,
-            int(sin_soldar), int(soldadas), int(sin_inspeccion), int(rechazadas), int(liberadas),
-            inspeccion, str(fecha_baysa), baysa_libero, str(fecha_inpros), inpros_libero,
-            "", "", "", ""
-        ]
-        if len(fila) == len(HEADERS):
-            sheet.append_row(fila)
-            st.success("✅ Registro agregado.")
-            st.rerun()
+        # Validación lógica
+        suma_soldadas = rechazadas + liberadas + sin_inspeccion
+        if soldadas != suma_soldadas:
+            st.error(f"❌ Error: Soldadas = {soldadas} ≠ Rechazadas + Liberadas + Sin inspección = {suma_soldadas}")
         else:
-            st.error("❌ La fila no coincide con la cantidad de columnas.")
+            fila = [
+                bloque, eje, nivel,
+                montaje, topografia,
+                int(sin_soldar), int(soldadas), int(sin_inspeccion), int(rechazadas), int(liberadas),
+                inspeccion, str(fecha_baysa), baysa_libero, str(fecha_inpros), inpros_libero,
+                "", "", "", ""
+            ]
+            if len(fila) == len(HEADERS):
+                sheet.append_row(fila)
+                st.success("✅ Registro agregado.")
+                st.rerun()
+            else:
+                st.error("❌ La fila no coincide con la cantidad de columnas.")
 
 # ------------------ CÁLCULOS Y VISUAL --------------------
 def calcular_avance(df):
