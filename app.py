@@ -6,8 +6,8 @@ from google.oauth2.service_account import Credentials
 import matplotlib.pyplot as plt
 import numpy as np
 
-st.set_page_config(page_title="Liberaciones v13.3", layout="wide")
-st.title("🔐 Liberaciones - 'Sin inspección' visible + Validaciones")
+st.set_page_config(page_title="Liberaciones v13.4", layout="centered")
+st.title("🔐 Liberaciones - Sin inspección visible y validaciones")
 
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 credentials = Credentials.from_service_account_info(st.secrets["GOOGLE_CREDENTIALS"], scopes=scope)
@@ -45,11 +45,13 @@ df = pd.DataFrame(sheet.get_all_records())
 # ------------------ FORMULARIO --------------------
 st.subheader("➕ Nuevo Registro")
 with st.form("formulario"):
+    st.markdown("### 📌 Identificación")
     col1, col2, col3 = st.columns(3)
     bloque = col1.text_input("Bloque")
     eje = col2.text_input("Eje")
     nivel = col3.text_input("Nivel")
 
+    st.markdown("### 🧱 Estado General")
     opciones_estado = ["🅿️", "✅", "❌"]
     col4, col5 = st.columns(2)
     montaje = col4.selectbox("Montaje", opciones_estado)
@@ -58,23 +60,30 @@ with st.form("formulario"):
     inspeccion = col5.selectbox("Reportes de inspección", opciones_estado)
     inpros_libero = col5.selectbox("Liberó INPROS", opciones_estado)
 
-    col6, col7, col8 = st.columns(3)
-    sin_soldar = col6.number_input("Sin soldar", min_value=0)
-    soldadas = col6.number_input("Soldadas", min_value=0)
-    sin_inspeccion = col7.number_input("Sin inspección", min_value=0)
-    rechazadas = col7.number_input("Rechazadas", min_value=0)
-    liberadas = col8.number_input("Liberadas", min_value=0)
+    st.markdown("### 🔢 Progreso numérico")
+    sin_soldar = st.number_input("Sin soldar", min_value=0)
+    soldadas = st.number_input("Soldadas", min_value=0)
+    sin_inspeccion = st.number_input("Sin inspección", min_value=0)
+    rechazadas = st.number_input("Rechazadas", min_value=0)
+    liberadas = st.number_input("Liberadas", min_value=0)
 
-    col9, col10 = st.columns(2)
-    fecha_baysa = col9.date_input("Fecha Entrega BAYSA", value=date.today())
-    fecha_inpros = col10.date_input("Fecha Recepción INPROS", value=date.today())
+    st.markdown("### 📅 Fechas")
+    col8, col9 = st.columns(2)
+    fecha_baysa = col8.date_input("Fecha Entrega BAYSA", value=date.today())
+    fecha_inpros = col9.date_input("Fecha Recepción INPROS", value=date.today())
 
     enviado = st.form_submit_button("Guardar en Google Sheets")
     if enviado:
-        # Validación lógica
-        suma_soldadas = rechazadas + liberadas + sin_inspeccion
-        if soldadas != suma_soldadas:
-            st.error(f"❌ Error: Soldadas = {soldadas} ≠ Rechazadas + Liberadas + Sin inspección = {suma_soldadas}")
+        errores = []
+
+        if soldadas != rechazadas + liberadas + sin_inspeccion:
+            errores.append("❌ Soldadas debe ser igual a Rechazadas + Liberadas + Sin inspección.")
+        if fecha_baysa > fecha_inpros:
+            errores.append("❌ La Fecha de Entrega BAYSA no puede ser posterior a la de Recepción INPROS.")
+
+        if errores:
+            for e in errores:
+                st.error(e)
         else:
             fila = [
                 bloque, eje, nivel,
@@ -85,10 +94,10 @@ with st.form("formulario"):
             ]
             if len(fila) == len(HEADERS):
                 sheet.append_row(fila)
-                st.success("✅ Registro agregado.")
+                st.success("✅ Registro agregado correctamente.")
                 st.rerun()
             else:
-                st.error("❌ La fila no coincide con la cantidad de columnas.")
+                st.error("❌ La fila no coincide con la cantidad esperada de columnas.")
 
 # ------------------ CÁLCULOS Y VISUAL --------------------
 def calcular_avance(df):
@@ -128,15 +137,12 @@ if not df.empty:
     ax.set_title("Resumen por Bloque")
     ax.set_facecolor("white")
     ax.grid(False)
-
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['left'].set_visible(False)
     ax.spines['bottom'].set_visible(True)
-
     for i, val in enumerate(resumen):
         ax.text(i, val + 1, f"{val:.1f}%", ha='center', va='bottom', fontsize=10)
-
     plt.xticks(rotation=0)
     plt.tight_layout()
     st.pyplot(fig)
