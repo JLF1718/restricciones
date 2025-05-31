@@ -4,9 +4,10 @@ import gspread
 from datetime import date
 from google.oauth2.service_account import Credentials
 import matplotlib.pyplot as plt
+import numpy as np
 
-st.set_page_config(page_title="Liberaciones v12", layout="wide")
-st.title("🔐 Liberaciones - Visual Mejorada + Sin inspección")
+st.set_page_config(page_title="Liberaciones v13", layout="wide")
+st.title("🔐 Liberaciones - Gráfico Azul Mejorado")
 
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 credentials = Credentials.from_service_account_info(st.secrets["GOOGLE_CREDENTIALS"], scopes=scope)
@@ -65,13 +66,22 @@ st.dataframe(df)
 st.subheader("📊 Cumplimiento por bloque")
 if not df.empty:
     resumen = df.groupby("Bloque")["% Cumplimiento"].mean().round(2)
-    fig, ax = plt.subplots()
-    colors = plt.cm.Blues([0.4 + 0.15 * i for i in range(len(resumen))])
+    fig, ax = plt.subplots(figsize=(8, 5))
+    colors = plt.cm.Blues(np.linspace(0.5, 1, len(resumen)))
     resumen.plot(kind="bar", ax=ax, color=colors, edgecolor='none')
     ax.set_ylabel("% Cumplimiento")
     ax.set_title("Resumen por Bloque")
-    for spine in ax.spines.values():
-        spine.set_visible(False)
+    ax.set_facecolor("white")
+    ax.grid(False)
+
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(True)
+
+    for i, val in enumerate(resumen):
+        ax.text(i, val + 1, f"{val:.1f}%", ha='center', va='bottom', fontsize=10)
+
     plt.xticks(rotation=0)
     plt.tight_layout()
     st.pyplot(fig)
