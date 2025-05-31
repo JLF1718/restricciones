@@ -5,9 +5,10 @@ from datetime import date
 from google.oauth2.service_account import Credentials
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Liberaciones v9 - Acceso Controlado", layout="centered")
-st.title("🔐 Liberaciones (solo acceso si ya existe el archivo)")
+st.set_page_config(page_title="Liberaciones v11", layout="wide")
+st.title("🔐 Liberaciones con filtros y edición")
 
+# Autenticación
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 credentials = Credentials.from_service_account_info(st.secrets["GOOGLE_CREDENTIALS"], scopes=scope)
 client = gspread.authorize(credentials)
@@ -19,27 +20,24 @@ HEADERS = [
     "Montaje", "Topografía",
     "Sin soldar", "Soldadas", "Rechazadas", "Liberadas",
     "Reportes de inspección", "Fecha Entrega BAYSA", "Liberó BAYSA",
-    "Fecha Recepción INPROS", "Liberó INPROS"
+    "Fecha Recepción INPROS", "Liberó INPROS",
+    "Total Juntas", "Avance Real", "% Avance", "% Cumplimiento"
 ]
 
-# Intentar conexión segura
+# Conectar hoja
 try:
     sheet = client.open(SHEET_NAME).worksheet(TAB_NAME)
-    st.success("✅ Hoja encontrada y conectada con éxito.")
-
-    # Mostrar enlace
     spreadsheet = client.open(SHEET_NAME)
     sheet_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet.id}"
     st.markdown(f"🔗 [Abrir hoja en Google Sheets]({sheet_url})")
-
 except Exception as e:
-    st.error("❌ No se pudo acceder a la hoja. Verifica que ya exista y esté compartida.")
+    st.error("❌ No se pudo acceder a la hoja.")
     st.code(str(e), language="bash")
     st.stop()
 
-# Leer datos
 df = pd.DataFrame(sheet.get_all_records())
 
+# Cálculos
 def calcular_avance(df):
     df = df.copy()
     for col in ["Sin soldar", "Soldadas", "Rechazadas", "Liberadas"]:
@@ -48,8 +46,7 @@ def calcular_avance(df):
     df["Avance Real"] = df["Rechazadas"] + df["Liberadas"]
     df["% Avance"] = df.apply(
         lambda row: round((row["Avance Real"] / row["Total Juntas"]) * 100, 2)
-        if row["Total Juntas"] > 0 else 0,
-        axis=1
+        if row["Total Juntas"] > 0 else 0, axis=1
     )
     return df
 
@@ -61,58 +58,84 @@ def calcular_cumplimiento(row):
     ])
     return round((score / 3) * 100, 2)
 
-# Formulario
-st.subheader("➕ Nuevo Registro")
-with st.form("formulario"):
-    col1, col2, col3 = st.columns(3)
-    bloque = col1.text_input("Bloque")
-    eje = col2.text_input("Eje")
-    nivel = col3.text_input("Nivel")
-
-    opciones_estado = ["🅿️", "✅", "❌"]
-    col4, col5 = st.columns(2)
-    montaje = col4.selectbox("Montaje", opciones_estado)
-    topografia = col4.selectbox("Topografía", opciones_estado)
-    baysa_libero = col4.selectbox("Liberó BAYSA", opciones_estado)
-    inspeccion = col5.selectbox("Reportes de inspección", opciones_estado)
-    inpros_libero = col5.selectbox("Liberó INPROS", opciones_estado)
-
-    col6, col7 = st.columns(2)
-    sin_soldar = col6.number_input("Sin soldar", min_value=0)
-    soldadas = col6.number_input("Soldadas", min_value=0)
-    rechazadas = col7.number_input("Rechazadas", min_value=0)
-    liberadas = col7.number_input("Liberadas", min_value=0)
-
-    col8, col9 = st.columns(2)
-    fecha_baysa = col8.date_input("Fecha Entrega BAYSA", value=date.today())
-    fecha_inpros = col9.date_input("Fecha Recepción INPROS", value=date.today())
-
-    enviado = st.form_submit_button("Guardar en Google Sheets")
-    if enviado:
-        fila = [
-            bloque, eje, nivel,
-            montaje, topografia,
-            int(sin_soldar), int(soldadas), int(rechazadas), int(liberadas),
-            inspeccion, str(fecha_baysa), baysa_libero, str(fecha_inpros), inpros_libero
-        ]
-        sheet.append_row(fila)
-        st.success("✅ Registro agregado correctamente.")
-        st.rerun()
-
-# Visualización
-if not df.empty and all(col in df.columns for col in ["Sin soldar", "Soldadas", "Rechazadas", "Liberadas"]):
+# Aplicar cálculos
+if not df.empty:
     df = calcular_avance(df)
     df["% Cumplimiento"] = df.apply(calcular_cumplimiento, axis=1)
 
-    st.subheader("📋 Tabla de registros")
-    st.dataframe(df)
+# Filtros
+st.sidebar.header("🔎 Filtros")
+filtro_bloque = st.sidebar.multiselect("Filtrar por Bloque", options=sorted(df["Bloque"].unique()), default=None)
+min_avance = st.sidebar.slider("Mínimo % Avance", 0, 100, 0)
 
-    st.subheader("📊 Cumplimiento por bloque")
-    resumen = df.groupby("Bloque")["% Cumplimiento"].mean().round(2)
+df_filtrado = df.copy()
+if filtro_bloque:
+    df_filtrado = df_filtrado[df_filtrado["Bloque"].isin(filtro_bloque)]
+df_filtrado = df_filtrado[df_filtrado["% Avance"] >= min_avance]
+
+# Mostrar tabla
+st.subheader("📋 Registros filtrados")
+st.dataframe(df_filtrado)
+
+# Gráfico
+if not df_filtrado.empty:
+    resumen = df_filtrado.groupby("Bloque")["% Cumplimiento"].mean().round(2)
     fig, ax = plt.subplots()
     resumen.plot(kind="bar", ax=ax)
     ax.set_ylabel("% Cumplimiento")
     ax.set_title("Resumen por Bloque")
     st.pyplot(fig)
-else:
-    st.info("ℹ️ No hay datos suficientes para mostrar cálculos o gráficos.")
+
+# Editor de registros
+st.subheader("✏️ Editar un registro existente")
+if not df.empty:
+    idx = st.selectbox("Selecciona el índice de fila", df.index)
+    registro = df.loc[idx]
+
+    with st.form("editor"):
+        col1, col2, col3 = st.columns(3)
+        bloque = col1.text_input("Bloque", value=str(registro["Bloque"]))
+        eje = col2.text_input("Eje", value=str(registro["Eje"]))
+        nivel = col3.text_input("Nivel", value=str(registro["Nivel"]))
+
+        opciones_estado = ["🅿️", "✅", "❌"]
+        col4, col5 = st.columns(2)
+        montaje = col4.selectbox("Montaje", opciones_estado, index=opciones_estado.index(registro["Montaje"]))
+        topografia = col4.selectbox("Topografía", opciones_estado, index=opciones_estado.index(registro["Topografía"]))
+        baysa_libero = col4.selectbox("Liberó BAYSA", opciones_estado, index=opciones_estado.index(registro["Liberó BAYSA"]))
+        inspeccion = col5.selectbox("Reportes de inspección", opciones_estado, index=opciones_estado.index(registro["Reportes de inspección"]))
+        inpros_libero = col5.selectbox("Liberó INPROS", opciones_estado, index=opciones_estado.index(registro["Liberó INPROS"]))
+
+        col6, col7 = st.columns(2)
+        sin_soldar = col6.number_input("Sin soldar", min_value=0, value=int(registro["Sin soldar"]))
+        soldadas = col6.number_input("Soldadas", min_value=0, value=int(registro["Soldadas"]))
+        rechazadas = col7.number_input("Rechazadas", min_value=0, value=int(registro["Rechazadas"]))
+        liberadas = col7.number_input("Liberadas", min_value=0, value=int(registro["Liberadas"]))
+
+        col8, col9 = st.columns(2)
+        fecha_baysa = col8.date_input("Fecha Entrega BAYSA", value=pd.to_datetime(registro["Fecha Entrega BAYSA"]))
+        fecha_inpros = col9.date_input("Fecha Recepción INPROS", value=pd.to_datetime(registro["Fecha Recepción INPROS"]))
+
+        guardar = st.form_submit_button("💾 Guardar cambios")
+        if guardar:
+            total_juntas = int(sin_soldar) + int(soldadas)
+            avance_real = int(rechazadas) + int(liberadas)
+            porcentaje_avance = round((avance_real / total_juntas) * 100, 2) if total_juntas > 0 else 0
+            score = sum([
+                montaje == "✅",
+                topografia == "✅",
+                inspeccion == "✅"
+            ])
+            porcentaje_cumplimiento = round((score / 3) * 100, 2)
+
+            nueva_fila = [
+                bloque, eje, nivel, montaje, topografia,
+                int(sin_soldar), int(soldadas), int(rechazadas), int(liberadas),
+                inspeccion, str(fecha_baysa), baysa_libero, str(fecha_inpros), inpros_libero,
+                total_juntas, avance_real, porcentaje_avance, porcentaje_cumplimiento
+            ]
+
+            sheet.delete_rows(idx + 2)  # +2: header + 0-based idx
+            sheet.insert_row(nueva_fila, idx + 2)
+            st.success("✅ Fila actualizada correctamente.")
+            st.rerun()
