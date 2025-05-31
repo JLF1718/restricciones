@@ -6,8 +6,8 @@ from google.oauth2.service_account import Credentials
 import matplotlib.pyplot as plt
 import numpy as np
 
-st.set_page_config(page_title="Liberaciones v13", layout="wide")
-st.title("🔐 Liberaciones - Gráfico Azul Mejorado")
+st.set_page_config(page_title="Liberaciones v13.1", layout="wide")
+st.title("🔐 Liberaciones - Gráfico Azul + Sin inspección")
 
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 credentials = Credentials.from_service_account_info(st.secrets["GOOGLE_CREDENTIALS"], scopes=scope)
@@ -55,6 +55,46 @@ def calcular_cumplimiento(row):
         row.get("Reportes de inspección") == "✅"
     ])
     return round((score / 3) * 100, 2)
+
+# Formulario
+st.subheader("➕ Nuevo Registro")
+with st.form("formulario"):
+    col1, col2, col3 = st.columns(3)
+    bloque = col1.text_input("Bloque")
+    eje = col2.text_input("Eje")
+    nivel = col3.text_input("Nivel")
+
+    opciones_estado = ["🅿️", "✅", "❌"]
+    col4, col5 = st.columns(2)
+    montaje = col4.selectbox("Montaje", opciones_estado)
+    topografia = col4.selectbox("Topografía", opciones_estado)
+    baysa_libero = col4.selectbox("Liberó BAYSA", opciones_estado)
+    inspeccion = col5.selectbox("Reportes de inspección", opciones_estado)
+    inpros_libero = col5.selectbox("Liberó INPROS", opciones_estado)
+
+    col6, col7 = st.columns(2)
+    sin_soldar = col6.number_input("Sin soldar", min_value=0)
+    soldadas = col6.number_input("Soldadas", min_value=0)
+    sin_inspeccion = col7.number_input("Sin inspección", min_value=0)
+    rechazadas = col7.number_input("Rechazadas", min_value=0)
+    liberadas = st.number_input("Liberadas", min_value=0)
+
+    col8, col9 = st.columns(2)
+    fecha_baysa = col8.date_input("Fecha Entrega BAYSA", value=date.today())
+    fecha_inpros = col9.date_input("Fecha Recepción INPROS", value=date.today())
+
+    enviado = st.form_submit_button("Guardar en Google Sheets")
+    if enviado:
+        fila = [
+            bloque, eje, nivel,
+            montaje, topografia,
+            int(sin_soldar), int(soldadas), int(sin_inspeccion), int(rechazadas), int(liberadas),
+            inspeccion, str(fecha_baysa), baysa_libero, str(fecha_inpros), inpros_libero,
+            "", "", "", ""
+        ]
+        sheet.append_row(fila)
+        st.success("✅ Registro agregado.")
+        st.rerun()
 
 if not df.empty:
     df = calcular_avance(df)
