@@ -106,15 +106,11 @@ class GoogleSheetsManager:
         """Verifica y actualiza los headers si es necesario"""
         try:
             current_headers = self.sheet.row_values(1)
--           if current_headers != HEADERS:
--               self.sheet.delete_rows(1)
--               self.sheet.insert_row(HEADERS, 1)
--               st.info("ℹ️ Encabezados actualizados automáticamente.")
-+           # Si la primera columna sigue siendo "ID", borramos e insertamos el arreglo nuevo
-+           if current_headers and current_headers[0] == "ID":
-+               self.sheet.delete_rows(1)
-+               self.sheet.insert_row(HEADERS, 1)
-+               st.info("ℹ️ Encabezados forzados actualizados (ID movido al final).")
+            # Si la primera columna sigue siendo "ID", borramos e insertamos el arreglo nuevo
+            if current_headers and current_headers[0] == "ID":
+                self.sheet.delete_rows(1)
+                self.sheet.insert_row(HEADERS, 1)
+                st.info("ℹ️ Encabezados forzados actualizados (ID movido al final).")
         except Exception as e:
             st.warning(f"⚠️ No se pudieron verificar los encabezados: {str(e)}")
     
