@@ -108,9 +108,9 @@ class GoogleSheetsManager:
             # Si la lista de encabezados no coincide en longitud o en primer elemento,
             # forzamos la actualización:
             if len(current_headers) != len(HEADERS) or current_headers[0] != "Bloque":
-            self.sheet.delete_rows(1)
-            self.sheet.insert_row(HEADERS, index=1)
-            st.info("ℹ️ Encabezados forzados actualizados.")
+                self.sheet.delete_rows(1)
+                self.sheet.insert_row(HEADERS, index=1)
+                st.info("ℹ️ Encabezados forzados actualizados.")
         except Exception as e:
             st.warning(f"⚠️ No se pudieron verificar los encabezados: {str(e)}")
 
