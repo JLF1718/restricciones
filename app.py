@@ -478,17 +478,30 @@ def show_new_record_page(sheets_manager: GoogleSheetsManager, df: pd.DataFrame):
                 ])
                 porc_cumplimiento = round((score / 3) * 100, 2)
                 
+                # Aquí armamos 'fila' en EL MISMO ORDEN que HEADERS
                 fila = [
-                    registro_id, bloque.strip(), eje.strip(), nivel.strip(),
-                    montaje, topografia,
-                    int(sin_soldar), int(soldadas), int(sin_inspeccion), 
-                    int(rechazadas), int(liberadas),
-                    inspeccion, str(fecha_baysa), baysa_libero, 
-                    str(fecha_inpros), inpros_libero,
-                    int(total_juntas), int(avance_real), porc_avance, porc_cumplimiento,
-                    timestamp, timestamp
+                    bloque.strip(),                      # HEADERS[0]  → "Bloque"
+                    eje.strip(),                         # HEADERS[1]  → "Eje"
+                    nivel.strip(),                       # HEADERS[2]  → "Nivel"
+                    montaje,                             # HEADERS[3]  → "Montaje"
+                    topografia,                          # HEADERS[4]  → "Topografía"
+                    int(sin_soldar),                     # HEADERS[5]  → "Sin soldar"
+                    int(soldadas),                       # HEADERS[6]  → "Soldadas"
+                    int(sin_inspeccion),                 # HEADERS[7]  → "Sin inspección"
+                    int(rechazadas),                     # HEADERS[8]  → "Rechazadas"
+                    int(liberadas),                      # HEADERS[9]  → "Liberadas"
+                    int(total_juntas),                   # HEADERS[10] → "Total Juntas"
+                    porc_avance,                         # HEADERS[11] → "% Avance de soldadura"
+                    inspeccion,                          # HEADERS[12] → "Reportes de inspección"
+                    str(fecha_baysa),                    # HEADERS[13] → "Fecha Entrega BAYSA"
+                    baysa_libero,                        # HEADERS[14] → "Liberó BAYSA"
+                    inpros_libero,                       # HEADERS[15] → "Liberó INPROS"
+                    str(fecha_inpros),                   # HEADERS[16] → "Fecha Recepción INPROS"
+                    porc_cumplimiento,                   # HEADERS[17] → "% Cumplimiento"
+                    timestamp,                           # HEADERS[18] → "Fecha Creación"
+                    timestamp,                           # HEADERS[19] → "Última Modificación"
+                    registro_id                          # HEADERS[20] → "ID"
                 ]
-                
                 # Guardar en Google Sheets
                 if sheets_manager.append_row(fila):
                     st.success("✅ Registro guardado correctamente")
