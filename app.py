@@ -647,15 +647,23 @@ def show_reports_page(df: pd.DataFrame):
         df_temporal["Fecha Creación"] = pd.to_datetime(df_temporal["Fecha Creación"])
         df_temporal["Mes"] = df_temporal["Fecha Creación"].dt.to_period("M")
         
+                # Agrupamos por mes y contamos
         registros_por_mes = df_temporal.groupby("Mes").size()
-        
+
+        # Convertimos esa Serie a un DataFrame con columnas "Mes" (como texto) y "count"
+        df_rpm = registros_por_mes.reset_index(name="count")
+        df_rpm["Mes"] = df_rpm["Mes"].astype(str)
+
+        # Ahora sí, creamos la figura usando data_frame, x="Mes", y="count"
         fig = px.line(
-            x=registros_por_mes.index.astype(str),
-            y=registros_por_mes.values,
+            df_rpm,
+            x="Mes",
+            y="count",
             title="Registros Creados por Mes",
-            labels={"x": "Mes", "y": "Cantidad de Registros"}
+            labels={"Mes": "Mes", "count": "Cantidad de Registros"}
         )
         st.plotly_chart(fig, use_container_width=True)
+
     
     # Análisis de rendimiento
     st.subheader("🎯 Análisis de Rendimiento")
