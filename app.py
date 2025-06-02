@@ -18,7 +18,7 @@ import hashlib
 # ==================== CONFIGURACIÓN ====================
 # Configuración de la página
 st.set_page_config(
-    page_title="Liberaciones v14.0 - Mejorado", 
+    page_title="Control de Restricciones para Avance de Campo", 
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -35,30 +35,28 @@ CONFIG = {
 
 # Headers de la hoja
 HEADERS = [
-    "Bloque",                # Antes "ID"
-    "Eje",                   # Antes "Bloque"
-    "Nivel",                 # Solo NL, NS, C, F2
-    "Montaje",               # Solo 🅿️, ✅, ❌, ⏳
-    "Topografía",            # Solo 🅿️, ✅, ❌, ⏳
-    "Reportes de inspección",# Solo 🅿️, ✅, ❌, ⏳
-    "Liberó BAYSA",
-    "Liberó INPROS",
+    "Bloque",
+    "Eje",
+    "Nivel",  # Permite solo "NL", "NS", "C", "F2"
+    "Montaje",  # Íconos: "🅿️", "✅", "❌", "⏳"
+    "Topografía",  # Íconos: "🅿️", "✅", "❌", "⏳"
     "Sin soldar",
     "Soldadas",
     "Sin inspección",
     "Rechazadas",
     "Liberadas",
-    "Fecha Entrega BAYSA",
-    "Fecha Recepción INPROS",
     "Total Juntas",
-    "Avance Real",
-    "% Avance",
+    "% Avance de soldadura",  # Renombrado de "% Avance"
+    "Reportes de inspección",  # Íconos: "🅿️", "✅", "❌", "⏳"
+    "Fecha Entrega BAYSA",
+    "Liberó BAYSA",
+    "Liberó INPROS",
+    "Fecha Recepción INPROS",
     "% Cumplimiento",
     "Fecha Creación",
     "Última Modificación",
     "ID"
 ]
-
 # Opciones de estado
 OPCIONES_ESTADO = {
     "🅿️": "Pendiente",
