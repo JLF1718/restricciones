@@ -35,13 +35,28 @@ CONFIG = {
 
 # Headers de la hoja
 HEADERS = [
-    "ID", "Bloque", "Eje", "Nivel",
-    "Montaje", "Topografía",
-    "Sin soldar", "Soldadas", "Sin inspección", "Rechazadas", "Liberadas",
-    "Reportes de inspección", "Fecha Entrega BAYSA", "Liberó BAYSA",
-    "Fecha Recepción INPROS", "Liberó INPROS",
-    "Total Juntas", "Avance Real", "% Avance", "% Cumplimiento",
-    "Fecha Creación", "Última Modificación"
+    "Bloque",                # Antes "ID"
+    "Eje",                   # Antes "Bloque"
+    "Nivel",                 # Solo NL, NS, C, F2
+    "Montaje",               # Solo 🅿️, ✅, ❌, ⏳
+    "Topografía",            # Solo 🅿️, ✅, ❌, ⏳
+    "Reportes de inspección",# Solo 🅿️, ✅, ❌, ⏳
+    "Liberó BAYSA",
+    "Liberó INPROS",
+    "Sin soldar",
+    "Soldadas",
+    "Sin inspección",
+    "Rechazadas",
+    "Liberadas",
+    "Fecha Entrega BAYSA",
+    "Fecha Recepción INPROS",
+    "Total Juntas",
+    "Avance Real",
+    "% Avance",
+    "% Cumplimiento",
+    "Fecha Creación",
+    "Última Modificación",
+    "ID"
 ]
 
 # Opciones de estado
