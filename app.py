@@ -100,17 +100,18 @@ class GoogleSheetsManager:
             st.error(f"❌ Error al conectar con Google Sheets: {str(e)}")
             raise e
     
-    def _verify_headers(self):
-        """Verifica y actualiza los headers si es necesario"""
-        try:
-            current_headers = self.sheet.row_values(1)
-            # Si la primera columna sigue siendo "ID", borramos e insertamos el arreglo nuevo
-            if current_headers and current_headers[0] == "ID":
-                self.sheet.delete_rows(1)
-                self.sheet.insert_row(HEADERS, 1)
-                st.info("ℹ️ Encabezados forzados actualizados (ID movido al final).")
-        except Exception as e:
-            st.warning(f"⚠️ No se pudieron verificar los encabezados: {str(e)}")
+def _verify_headers(self):
+    """Verifica y actualiza los headers si es necesario"""
+    try:
+        current_headers = self.sheet.row_values(1)
+        # Si la lista actual de encabezados no coincide exactamente con HEADERS, 
+        # borrar fila 1 e insertar nuevamente
+        if current_headers != HEADERS:
+            self.sheet.delete_rows(1)
+            self.sheet.insert_row(HEADERS, index=1)
+            st.info("ℹ️ Encabezados forzados actualizados.")
+    except Exception as e:
+        st.warning(f"⚠️ No se pudieron verificar los encabezados: {str(e)}")
     
     def get_sheet_url(self) -> str:
         """Retorna la URL de la hoja de cálculo"""
