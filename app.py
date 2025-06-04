@@ -35,6 +35,7 @@ CONFIG = {
 
 # Headers de la hoja
 HEADERS = [
+    "Edificio",
     "Bloque",
     "Eje",
     "Nivel",  # Permite solo "NL", "NS", "C", "F2"
@@ -107,7 +108,7 @@ class GoogleSheetsManager:
 
             # Si la lista de encabezados no coincide en longitud o en primer elemento,
             # forzamos la actualización:
-            if len(current_headers) != len(HEADERS) or current_headers[0] != "Bloque":
+            if len(current_headers) != len(HEADERS) or current_headers[0] != "Edificio":
                 self.sheet.delete_rows(1)
                 self.sheet.insert_row(HEADERS, index=1)
                 st.info("ℹ️ Encabezados forzados actualizados.")
@@ -124,14 +125,20 @@ class GoogleSheetsManager:
         try:
             data = _self.sheet.get_all_records()
             df = pd.DataFrame(data)
-            
+        
             if df.empty:
                 return pd.DataFrame(columns=HEADERS)
-            
+        
             # Limpieza y conversión de datos
             df = DataProcessor.clean_dataframe(df)
+        
+            # ===== Paso 2.2: insertar columna interna 'Bloque_Edificio' =====
+            df["Bloque_Edificio"] = (
+                df["Edificio"].astype(str).str.strip() + "_" + df["Bloque"].astype(str).str.strip()
+            )
+        
             return df
-            
+        
         except Exception as e:
             st.error(f"❌ Error al cargar datos: {str(e)}")
             return pd.DataFrame(columns=HEADERS)
@@ -384,36 +391,33 @@ def show_new_record_page(sheets_manager: GoogleSheetsManager, df: pd.DataFrame):
     st.header("➕ Nuevo Registro")
     
     with st.form("formulario_nuevo", clear_on_submit=True):
-        # Identificación
+        # === Identificación (3.1) ===
         st.markdown("### 📌 Identificación")
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            bloque = st.text_input("Bloque *", placeholder="Ej: A1, B2, C3")
+            edificio = st.text_input("Edificio *", placeholder="Ej: A1, B2, C3")
+            bloque = st.text_input("Bloque *", placeholder="Ej: TorreA, Edif1")
         with col2:
             eje = st.text_input("Eje *", placeholder="Ej: X, Y, Z")
         with col3:
-            nivel = st.text_input("Nivel *", placeholder="Ej: N1, N2, N3")
+            nivel = st.text_input("Nivel *", placeholder="Ej: NL, NS, C, F2")
         
-        # Estado General
+        # === Estado general ===
         st.markdown("### 🧱 Estado General")
         col4, col5, col6 = st.columns(3)
-        
         with col4:
             montaje = st.selectbox("Montaje", list(OPCIONES_ESTADO.keys()), index=0)
             topografia = st.selectbox("Topografía", list(OPCIONES_ESTADO.keys()), index=0)
-        
         with col5:
             inspeccion = st.selectbox("Reportes de inspección", list(OPCIONES_ESTADO.keys()), index=0)
             baysa_libero = st.selectbox("Liberó BAYSA", list(OPCIONES_ESTADO.keys()), index=0)
-        
         with col6:
             inpros_libero = st.selectbox("Liberó INPROS", list(OPCIONES_ESTADO.keys()), index=0)
         
-        # Progreso numérico
+        # === Progreso numérico ===
         st.markdown("### 🔢 Progreso Numérico")
         col7, col8, col9, col10, col11 = st.columns(5)
-        
         with col7:
             sin_soldar = st.number_input("Sin soldar", min_value=0, value=0)
         with col8:
@@ -425,89 +429,127 @@ def show_new_record_page(sheets_manager: GoogleSheetsManager, df: pd.DataFrame):
         with col11:
             liberadas = st.number_input("Liberadas", min_value=0, value=0)
         
-        # Vista previa de cálculos
         if soldadas > 0:
             total_verificacion = rechazadas + liberadas + sin_inspeccion
             st.info(f"ℹ️ Verificación: Soldadas ({soldadas}) vs Suma ({total_verificacion})")
         
-        # Fechas
+        # === Fechas ===
         st.markdown("### 📅 Fechas")
         col12, col13 = st.columns(2)
-        
         with col12:
             fecha_baysa = st.date_input("Fecha Entrega BAYSA", value=date.today())
         with col13:
             fecha_inpros = st.date_input("Fecha Recepción INPROS", value=date.today())
         
-        # Botón de envío
+        # === Botón de envío ===
         col_submit1, col_submit2, col_submit3 = st.columns([1, 2, 1])
         with col_submit2:
             enviado = st.form_submit_button("💾 Guardar Registro", use_container_width=True)
         
-        # Procesar envío
+        # === Procesar envío ===
         if enviado:
-            # Validar datos
-            errores = DataValidator.validate_form_data(
-                bloque, eje, nivel, soldadas, rechazadas, 
-                liberadas, sin_inspeccion, fecha_baysa, fecha_inpros
-            )
+            errores = []
             
-            # Verificar duplicados
+            # --- 3.2: Validar “Edificio” y “Bloque” ---
+            if not edificio.strip():
+                errores.append("❌ El campo 'Edificio' es obligatorio")
+            elif not re.match(r'^[A-Za-z0-9\-_]+$', edificio.strip()):
+                errores.append("❌ 'Edificio' solo puede contener letras, números, guiones y guiones bajos")
+            
+            if not bloque.strip():
+                errores.append("❌ El campo 'Bloque' es obligatorio")
+            elif not re.match(r'^[A-Za-z0-9\-_]+$', bloque.strip()):
+                errores.append("❌ 'Bloque' solo puede contener letras, números, guiones y guiones bajos")
+            
+            # --- 3.3: Validar duplicados ---
+            # 3.3.1: Duplicado Bloque–Eje–Nivel (igual a tu lógica anterior)
             if not errores and DataValidator.check_duplicate(df, bloque, eje, nivel):
-                errores.append("❌ Ya existe un registro con la misma combinación Bloque-Eje-Nivel")
+                errores.append("❌ Ya existe un registro con la misma combinación Bloque–Eje–Nivel")
             
-            # Mostrar errores o guardar
+            # 3.3.2: Duplicado clave interna Edificio_Bloque
+            clave_interna = f"{edificio.strip()}_{bloque.strip()}"
+            # Dentro de show_new_record_page, en la sección de validación (donde comprobamos 3.3.2):
+            if not errores:
+                # 4.1: si no existe, la agregamos sobre la marcha (solo para evitar KeyError)
+                if "Bloque_Edificio" not in df.columns:
+                    df["Bloque_Edificio"] = df["Edificio"].astype(str).str.strip() + "_" + df["Bloque"].astype(str).str.strip()
+    
+    if (df["Bloque_Edificio"].astype(str) == clave_interna).any():
+        errores.append("❌ Ya hay un registro con ese mismo Edificio y Bloque")
+            # --- 3.4: Validar numéricos y fechas (tu lógica existente) ---
+            if sin_soldar < 0:
+                errores.append("❌ 'Sin soldar' no puede ser negativo")
+            if soldadas < 0:
+                errores.append("❌ 'Soldadas' no puede ser negativo")
+            if sin_inspeccion < 0:
+                errores.append("❌ 'Sin inspección' no puede ser negativo")
+            if rechazadas < 0:
+                errores.append("❌ 'Rechazadas' no puede ser negativo")
+            if liberadas < 0:
+                errores.append("❌ 'Liberadas' no puede ser negativo")
+            
+            if soldadas != (rechazadas + liberadas + sin_inspeccion):
+                errores.append("❌ Soldadas debe ser igual a Rechazadas + Liberadas + Sin inspección")
+            
+            if fecha_baysa > fecha_inpros:
+                errores.append("❌ La Fecha de Entrega BAYSA no puede ser posterior a la de Recepción INPROS")
+            
+            fecha_limite = date.today() + timedelta(days=365)
+            if fecha_baysa > fecha_limite:
+                errores.append("❌ La Fecha de Entrega BAYSA no puede ser más de un año en el futuro")
+            if fecha_inpros > fecha_limite:
+                errores.append("❌ La Fecha de Recepción INPROS no puede ser más de un año en el futuro")
+            
+            # Mostrar errores si los hay
             if errores:
                 for error in errores:
                     st.error(error)
             else:
-                # Crear registro
+                # --- 3.5: Armar fila y guardar ---
                 registro_id = DataProcessor.generate_unique_id(bloque, eje, nivel)
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
-                # Calcular métricas
                 total_juntas = sin_soldar + soldadas
                 avance_real = rechazadas + liberadas
                 porc_avance = round((avance_real / total_juntas) * 100, 2) if total_juntas > 0 else 0
                 
-                # Calcular cumplimiento
                 score = sum([
                     montaje == "✅",
-                    topografia == "✅", 
+                    topografia == "✅",
                     inspeccion == "✅"
                 ])
                 porc_cumplimiento = round((score / 3) * 100, 2)
                 
-                # Aquí armamos 'fila' en EL MISMO ORDEN que HEADERS
                 fila = [
-                    bloque.strip(),                      # HEADERS[0]  → "Bloque"
-                    eje.strip(),                         # HEADERS[1]  → "Eje"
-                    nivel.strip(),                       # HEADERS[2]  → "Nivel"
-                    montaje,                             # HEADERS[3]  → "Montaje"
-                    topografia,                          # HEADERS[4]  → "Topografía"
-                    int(sin_soldar),                     # HEADERS[5]  → "Sin soldar"
-                    int(soldadas),                       # HEADERS[6]  → "Soldadas"
-                    int(sin_inspeccion),                 # HEADERS[7]  → "Sin inspección"
-                    int(rechazadas),                     # HEADERS[8]  → "Rechazadas"
-                    int(liberadas),                      # HEADERS[9]  → "Liberadas"
-                    int(total_juntas),                   # HEADERS[10] → "Total Juntas"
-                    porc_avance,                         # HEADERS[11] → "% Avance de soldadura"
-                    inspeccion,                          # HEADERS[12] → "Reportes de inspección"
-                    str(fecha_baysa),                    # HEADERS[13] → "Fecha Entrega BAYSA"
-                    baysa_libero,                        # HEADERS[14] → "Liberó BAYSA"
-                    inpros_libero,                       # HEADERS[15] → "Liberó INPROS"
-                    str(fecha_inpros),                   # HEADERS[16] → "Fecha Recepción INPROS"
-                    porc_cumplimiento,                   # HEADERS[17] → "% Cumplimiento"
-                    timestamp,                           # HEADERS[18] → "Fecha Creación"
-                    timestamp,                           # HEADERS[19] → "Última Modificación"
-                    registro_id                          # HEADERS[20] → "ID"
+                    edificio.strip(),            # [0] "Edificio"
+                    bloque.strip(),              # [1] "Bloque"
+                    eje.strip(),                 # [2] "Eje"
+                    nivel.strip(),               # [3] "Nivel"
+                    montaje,                     # [4] "Montaje"
+                    topografia,                  # [5] "Topografía"
+                    int(sin_soldar),             # [6] "Sin soldar"
+                    int(soldadas),               # [7] "Soldadas"
+                    int(sin_inspeccion),         # [8] "Sin inspección"
+                    int(rechazadas),             # [9] "Rechazadas"
+                    int(liberadas),              # [10] "Liberadas"
+                    int(total_juntas),           # [11] "Total Juntas"
+                    porc_avance,                 # [12] "% Avance de soldadura"
+                    inspeccion,                  # [13] "Reportes de inspección"
+                    str(fecha_baysa),            # [14] "Fecha Entrega BAYSA"
+                    baysa_libero,                # [15] "Liberó BAYSA"
+                    inpros_libero,               # [16] "Liberó INPROS"
+                    str(fecha_inpros),           # [17] "Fecha Recepción INPROS"
+                    porc_cumplimiento,           # [18] "% Cumplimiento"
+                    timestamp,                   # [19] "Fecha Creación"
+                    timestamp,                   # [20] "Última Modificación"
+                    registro_id                  # [21] "ID"
                 ]
-                # Guardar en Google Sheets
+                
                 if sheets_manager.append_row(fila):
                     st.success("✅ Registro guardado correctamente")
                     st.balloons()
                     st.rerun()
-
+                    
 def show_dashboard_page(df: pd.DataFrame):
     """Página de dashboard con métricas y gráficos"""
     st.header("📊 Dashboard de Liberaciones")
@@ -573,6 +615,8 @@ def show_dashboard_page(df: pd.DataFrame):
     # Tabla resumen
     st.subheader("📋 Resumen por Bloque")
     if not df.empty:
+        # 3.1.1: eliminar 'Bloque_Edificio' antes de agrupar/mostrar
+        df_sin_interna = df.drop(columns=["Bloque_Edificio"])
         resumen_detallado = df.groupby("Bloque").agg({
             "Total Juntas": "sum",
             "Liberadas": "sum", 
@@ -622,8 +666,11 @@ def show_data_management_page(sheets_manager: GoogleSheetsManager, df: pd.DataFr
     if not df_filtrado.empty:
         st.subheader(f"📊 Datos ({len(df_filtrado)} registros)")
         
+        # 3.2.1: Retirar la columna interna antes de mostrar
+        df_para_mostrar= df_filtrado.drop(columns=["Bloque_Edificio"])
         # Mostrar datos con opción de selección
         selected_indices = st.dataframe(
+            df_para_mostrar,
             df_filtrado,
             use_container_width=True,
             hide_index=True,
