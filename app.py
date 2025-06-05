@@ -462,21 +462,24 @@ def show_new_record_page(sheets_manager: GoogleSheetsManager, df: pd.DataFrame):
                 errores.append("❌ 'Bloque' solo puede contener letras, números, guiones y guiones bajos")
             
             # --- 3.3: Validar duplicados ---
-            # 3.3.1: Duplicado Bloque–Eje–Nivel (igual a tu lógica anterior)
+            # 3.3.1: Duplicado Bloque–Eje–Nivel
             if not errores and DataValidator.check_duplicate(df, bloque, eje, nivel):
                 errores.append("❌ Ya existe un registro con la misma combinación Bloque–Eje–Nivel")
             
             # 3.3.2: Duplicado clave interna Edificio_Bloque
             clave_interna = f"{edificio.strip()}_{bloque.strip()}"
-            # Dentro de show_new_record_page, en la sección de validación (donde comprobamos 3.3.2):
             if not errores:
-                # 4.1: si no existe, la agregamos sobre la marcha (solo para evitar KeyError)
+                # 4.1: Si no existe la columna en el DataFrame, la creamos
                 if "Bloque_Edificio" not in df.columns:
-                    df["Bloque_Edificio"] = df["Edificio"].astype(str).str.strip() + "_" + df["Bloque"].astype(str).str.strip()
-    
-    if (df["Bloque_Edificio"].astype(str) == clave_interna).any():
-        errores.append("❌ Ya hay un registro con ese mismo Edificio y Bloque")
-            # --- 3.4: Validar numéricos y fechas (tu lógica existente) ---
+                    df["Bloque_Edificio"] = (
+                        df["Edificio"].astype(str).str.strip() + "_" +
+                        df["Bloque"].astype(str).str.strip()
+                    )
+                # 4.2: Chequeamos duplicado con esa clave interna
+                if (df["Bloque_Edificio"].astype(str) == clave_interna).any():
+                    errores.append("❌ Ya hay un registro con ese mismo Edificio y Bloque")
+            
+            # --- 3.4: Validar numéricos y fechas ---
             if sin_soldar < 0:
                 errores.append("❌ 'Sin soldar' no puede ser negativo")
             if soldadas < 0:
@@ -489,16 +492,24 @@ def show_new_record_page(sheets_manager: GoogleSheetsManager, df: pd.DataFrame):
                 errores.append("❌ 'Liberadas' no puede ser negativo")
             
             if soldadas != (rechazadas + liberadas + sin_inspeccion):
-                errores.append("❌ Soldadas debe ser igual a Rechazadas + Liberadas + Sin inspección")
+                errores.append(
+                    "❌ 'Soldadas' debe ser igual a Rechazadas + Liberadas + Sin inspección"
+                )
             
             if fecha_baysa > fecha_inpros:
-                errores.append("❌ La Fecha de Entrega BAYSA no puede ser posterior a la de Recepción INPROS")
+                errores.append(
+                    "❌ La Fecha de Entrega BAYSA no puede ser posterior a la de Recepción INPROS"
+                )
             
             fecha_limite = date.today() + timedelta(days=365)
             if fecha_baysa > fecha_limite:
-                errores.append("❌ La Fecha de Entrega BAYSA no puede ser más de un año en el futuro")
+                errores.append(
+                    "❌ La Fecha de Entrega BAYSA no puede ser más de un año en el futuro"
+                )
             if fecha_inpros > fecha_limite:
-                errores.append("❌ La Fecha de Recepción INPROS no puede ser más de un año en el futuro")
+                errores.append(
+                    "❌ La Fecha de Recepción INPROS no puede ser más de un año en el futuro"
+                )
             
             # Mostrar errores si los hay
             if errores:
@@ -511,7 +522,11 @@ def show_new_record_page(sheets_manager: GoogleSheetsManager, df: pd.DataFrame):
                 
                 total_juntas = sin_soldar + soldadas
                 avance_real = rechazadas + liberadas
-                porc_avance = round((avance_real / total_juntas) * 100, 2) if total_juntas > 0 else 0
+                porc_avance = (
+                    round((avance_real / total_juntas) * 100, 2)
+                    if total_juntas > 0
+                    else 0
+                )
                 
                 score = sum([
                     montaje == "✅",
@@ -548,8 +563,7 @@ def show_new_record_page(sheets_manager: GoogleSheetsManager, df: pd.DataFrame):
                 if sheets_manager.append_row(fila):
                     st.success("✅ Registro guardado correctamente")
                     st.balloons()
-                    st.rerun()
-                    
+                    st.rerun()                    
 def show_dashboard_page(df: pd.DataFrame):
     """Página de dashboard con métricas y gráficos"""
     st.header("📊 Dashboard de Liberaciones")
